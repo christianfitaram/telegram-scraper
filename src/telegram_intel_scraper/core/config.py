@@ -19,7 +19,7 @@ DEFAULT_CHANNEL_URLS: List[str] = [
     "https://t.me/me_observer_TG",
     "https://t.me/DDGeopolitics",
     "https://t.me/entre_guerras",
-    "https://t.me/Suriyak_map",
+    "https://t.me/Suriyakmaps"
 ]
 
 
