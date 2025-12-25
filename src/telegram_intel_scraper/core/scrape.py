@@ -1,19 +1,20 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Dict, Any
+from typing import Any, Dict
 
 from telethon import TelegramClient
 
 from telegram_intel_scraper.core.config import Settings
+from telegram_intel_scraper.core.mongo import get_articles_collection
 from telegram_intel_scraper.core.state import load_state, save_state
 from telegram_intel_scraper.core.writer import write_jsonl
-from telegram_intel_scraper.core.mongo import get_articles_collection
 from telegram_intel_scraper.repositories.articles_repository import ArticlesRepository
 
 from telegram_intel_scraper.providers.telegram import parse_username, iter_channel_messages
-from telegram_intel_scraper.providers.title_llm import generate_title_ollama
+from telegram_intel_scraper.providers.text_translate_genai import detect_and_translate_to_english
 from telegram_intel_scraper.providers.title_genai import generate_title_genai
+from telegram_intel_scraper.providers.title_llm import generate_title_ollama
 from telegram_intel_scraper.utils.text import normalize_whitespace, title_heuristic
 
 
@@ -72,20 +73,39 @@ async def run_scrape(settings: Settings) -> None:
             last_id = int(state.get(username, {}).get("last_id", 0))
             print(f"[{username}] resume after last_id={last_id}")
 
-            async for msg in iter_channel_messages(client, username=username, min_id_exclusive=last_id, since=settings.scrape_since, until=settings.scrape_until,):
+            async for msg in iter_channel_messages(
+                client,
+                username=username,
+                min_id_exclusive=last_id,
+                since=settings.scrape_since,
+                until=settings.scrape_until,
+            ):
                 raw_text = (msg.message or "").strip()
 
                 if not raw_text and not settings.include_empty_text:
                     # Skip purely media posts without captions, etc.
                     continue
 
-                text = normalize_whitespace(raw_text)
-                title = _resolve_title(settings, text)
+                original_text = normalize_whitespace(raw_text)
+
+                language = "unknown"
+                text_en = original_text
+
+                if settings.translate_to_en and original_text:
+                    try:
+                        language, text_en = detect_and_translate_to_english(
+                            original_text,
+                            model=settings.genai_model,
+                        )
+                    except Exception:
+                        text_en = original_text
+
+                title = _resolve_title(settings, text_en)
 
                 record: Dict[str, Any] = {
                     "title": title,
                     "url": url,
-                    "text": text,
+                    "text": text_en,  # canonical text = English
                     "source": username,
                     "scraped_at": datetime.now(timezone.utc).isoformat(),
                 }
@@ -94,7 +114,10 @@ async def run_scrape(settings: Settings) -> None:
                     repo.upsert_article(
                         {
                             **record,
-                            "external_id": msg.id,  # Telegram message ID
+                            "text_original": original_text,
+                            "text_en": text_en,
+                            "language": language,
+                            "external_id": msg.id,
                             "telegram_date": msg.date,
                             "telegram_channel": username,
                             "telegram_url": f"https://t.me/{username}/{msg.id}",

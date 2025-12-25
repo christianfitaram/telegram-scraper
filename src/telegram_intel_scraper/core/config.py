@@ -61,6 +61,8 @@ class Settings:
        
     scrape_since: Optional[datetime]
     scrape_until: Optional[datetime]
+    translate_to_en: bool
+
 
     @staticmethod
     def from_env() -> "Settings":
@@ -92,4 +94,6 @@ class Settings:
             genai_model=os.getenv("GENAI_MODEL", "gemini-3-flash-preview"),
             scrape_since=_parse_utc_iso(os.getenv("SCRAPE_SINCE")),
             scrape_until=_parse_utc_iso(os.getenv("SCRAPE_UNTIL")),
+            translate_to_en=os.getenv("TRANSLATE_TO_EN", "0").lower() in ("1", "true", "yes"),
+
         )
