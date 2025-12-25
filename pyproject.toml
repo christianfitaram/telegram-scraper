@@ -1,0 +1,30 @@
+[project]
+name = "telegram-scraper"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "christianfitaram",email = "christianfitaram@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "telethon (>=1.42.0,<2.0.0)",
+    "python-dotenv (>=1.2.1,<2.0.0)",
+    "requests (>=2.32.5,<3.0.0)",
+    "pymongo (>=4.15.5,<5.0.0)",
+    "google-genai (>=1.56.0,<2.0.0)"
+]
+
+[tool.poetry]
+packages = [
+  { include = "telegram_intel_scraper", from = "src" }
+]
+
+[tool.poetry.scripts]
+telegram-scrape = "telegram_intel_scraper.main:main"
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+

@@ -1,0 +1,111 @@
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from typing import Dict, Any
+
+from telethon import TelegramClient
+
+from telegram_intel_scraper.core.config import Settings
+from telegram_intel_scraper.core.state import load_state, save_state
+from telegram_intel_scraper.core.writer import write_jsonl
+from telegram_intel_scraper.core.mongo import get_articles_collection
+from telegram_intel_scraper.repositories.articles_repository import ArticlesRepository
+
+from telegram_intel_scraper.providers.telegram import parse_username, iter_channel_messages
+from telegram_intel_scraper.providers.title_llm import generate_title_ollama
+from telegram_intel_scraper.providers.title_genai import generate_title_genai
+from telegram_intel_scraper.utils.text import normalize_whitespace, title_heuristic
+
+
+def _resolve_title(settings: Settings, text: str) -> str:
+    """
+    Single source of truth for how titles are generated.
+    Priority:
+      1) settings.title_provider if set to 'genai' | 'ollama' | 'heuristic'
+      2) legacy fallback: enable_llm_titles => use 'ollama'
+      3) default: heuristic
+    """
+    provider = (getattr(settings, "title_provider", "") or "").strip().lower()
+
+    # Backward compatible behavior if title_provider isn't set
+    if not provider:
+        provider = "ollama" if getattr(settings, "enable_llm_titles", False) else "heuristic"
+
+    if not text:
+        return "Telegram message"
+
+    if provider == "genai":
+        try:
+            return generate_title_genai(text, model=getattr(settings, "genai_model", "gemini-3-flash-preview"))
+        except Exception:
+            return title_heuristic(text)
+
+    if provider == "ollama":
+        try:
+            return generate_title_ollama(text, settings.ollama_url, settings.ollama_model)
+        except Exception:
+            return title_heuristic(text)
+
+    # heuristic (default)
+    return title_heuristic(text)
+
+
+async def run_scrape(settings: Settings) -> None:
+    state = load_state(settings.state_file)
+
+    repo: ArticlesRepository | None = None
+    if settings.mongo_uri:
+        collection = get_articles_collection(
+            settings.mongo_uri,
+            settings.mongo_db,
+            settings.mongo_collection,
+        )
+        repo = ArticlesRepository(collection)
+
+    async with TelegramClient(
+        settings.telegram_session,
+        settings.telegram_api_id,
+        settings.telegram_api_hash,
+    ) as client:
+        for url in settings.channels:
+            username = parse_username(url)
+            last_id = int(state.get(username, {}).get("last_id", 0))
+            print(f"[{username}] resume after last_id={last_id}")
+
+            async for msg in iter_channel_messages(client, username=username, min_id_exclusive=last_id, since=settings.scrape_since, until=settings.scrape_until,):
+                raw_text = (msg.message or "").strip()
+
+                if not raw_text and not settings.include_empty_text:
+                    # Skip purely media posts without captions, etc.
+                    continue
+
+                text = normalize_whitespace(raw_text)
+                title = _resolve_title(settings, text)
+
+                record: Dict[str, Any] = {
+                    "title": title,
+                    "url": url,
+                    "text": text,
+                    "source": username,
+                    "scraped_at": datetime.now(timezone.utc).isoformat(),
+                }
+
+                if repo is not None:
+                    repo.upsert_article(
+                        {
+                            **record,
+                            "external_id": msg.id,  # Telegram message ID
+                            "telegram_date": msg.date,
+                            "telegram_channel": username,
+                            "telegram_url": f"https://t.me/{username}/{msg.id}",
+                        }
+                    )
+                else:
+                    # Optional JSONL fallback / audit log
+                    write_jsonl(settings.out_jsonl, record)
+
+                # checkpoint
+                state[username] = {"last_id": msg.id}
+                save_state(settings.state_file, state)
+
+            print(f"[{username}] done")
