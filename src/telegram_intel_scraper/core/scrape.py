@@ -108,7 +108,7 @@ async def run_scrape(settings: Settings) -> None:
                         "url": url,
                         "text": text_en,  # canonical text = English
                         "source": username,
-                        "scraped_at": datetime.now(timezone.utc).isoformat(),
+                        "scraped_at": msg.date,
                     }
 
                     if repo is not None:
