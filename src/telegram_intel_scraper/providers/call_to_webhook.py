@@ -70,7 +70,6 @@ def _post_json(url: str, payload: Dict[str, Any], headers: Dict[str, str], timeo
         print(f"Error sending to webhook: {http_err} Status: {response.status_code} Body: {response.text}")
         return None
 
-
 def send_to_webhook_to_embedding(insert_id, webhook_url=None):
     try:
         payload = get_news_data(insert_id)
@@ -83,14 +82,23 @@ def send_to_webhook_to_embedding(insert_id, webhook_url=None):
         if validation_error:
             print(validation_error)
             return None
-
+        text_builder = f"Title: {payload.get('title', '')}\n\n Text: {payload.get('text', '')}\n\n Message sent at: {payload.get('scraped_at', '')}\n\n Source: Message from {payload.get('source', '')} in Telegram\n\n URL: {payload.get('url', '')}"
         headers = {
             "Content-Type": "application/json",
             "X-Signature": WEBHOOK_SIGNATURE,
         }
-
+        payload_to_send = {
+            "article_id": payload.get("article_id"),
+            "url": payload.get("url"),
+            "title": payload.get("title"),
+            "text": text_builder,
+            "topic": payload.get("topic"),
+            "source": payload.get("source"),
+            "sentiment": payload.get("sentiment"),
+            "scraped_at": payload.get("scraped_at"),
+        }
         target_url = webhook_url or os.getenv("WEBHOOK_URL", "http://localhost:8080/webhook/news")
-        return _post_json(target_url, payload, headers, timeout=DEFAULT_TIMEOUT)
+        return _post_json(target_url, payload_to_send, headers, timeout=DEFAULT_TIMEOUT)
 
     except requests.exceptions.RequestException as e:
         # Network-level errors, timeouts, DNS, etc.
