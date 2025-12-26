@@ -32,8 +32,10 @@ async def iter_channel_messages(
     offset_id = 0
     page_size = 200
 
+    print(f"[{username}] iter_channel_messages since={since} until={until} min_id_exclusive={min_id_exclusive}")
     while True:
         msgs: List[Message] = await client.get_messages(entity, limit=page_size, offset_id=offset_id)
+        print(f"[{username}] fetched page {offset_id} count={len(msgs)}")
         if not msgs:
             break
 
@@ -46,7 +48,9 @@ async def iter_channel_messages(
         # If we paged into older-than-last_id, we can stop after processing new ones
         stop_after = msgs[-1].id <= min_id_exclusive
 
+        stop_after_since = False
         # Yield in ascending order for deterministic downstream processing
+        print(f"[{username}] new_msgs ids={[m.id for m in new_msgs]}")
         for m in sorted(new_msgs, key=lambda x: x.id):
             # Telethon msg.date is typically timezone-aware UTC datetime
             if not m.date:
@@ -54,16 +58,22 @@ async def iter_channel_messages(
 
             # If message is newer than "until", skip it (but keep going; older ones may match)
             if until is not None and m.date > until:
+                print(f"[{username}] skip {m.id} newer-than-until ({m.date})")
                 continue
 
             # If message is older than "since", we can stop entirely because pagination goes older from here
             if since is not None and m.date < since:
-                return
+                print(f"[{username}] stop: {m.id} older-than-since ({m.date})")
+                stop_after_since = True
+                continue
 
             yield m
             fetched += 1
             if limit is not None and fetched >= limit:
                 return
+
+        if stop_after_since:
+            return
 
         if stop_after:
             break

@@ -81,6 +81,7 @@ async def run_scrape(settings: Settings) -> None:
                     since=settings.scrape_since,
                     until=settings.scrape_until,
                 ):
+                    print(f"[{username}] candidate message id={msg.id} date={msg.date}")
                     raw_text = (msg.message or "").strip()
 
                     if not raw_text and not settings.include_empty_text:
@@ -112,7 +113,7 @@ async def run_scrape(settings: Settings) -> None:
                     }
 
                     if repo is not None:
-                        repo.upsert_article(
+                        inserted = repo.upsert_article(
                             {
                                 **record,
                                 "text_original": original_text,
@@ -124,6 +125,8 @@ async def run_scrape(settings: Settings) -> None:
                                 "telegram_url": f"https://t.me/{username}/{msg.id}",
                             }
                         )
+                        if not inserted:
+                            print(f"[{username}] skipped duplicate {msg.id} for channel")
                     else:
                         # Optional JSONL fallback / audit log
                         write_jsonl(settings.out_jsonl, record)

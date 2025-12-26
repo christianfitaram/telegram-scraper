@@ -1,6 +1,5 @@
 src/telegram_intel_scraper/__pycache__
 src/telegram_intel_scraper/*/__pycache__
 .env
-telegram_scraper_session.session
-telegram_scraper_session.session-journal
-telegram_state.json
+.pytest_cache
+tests/__pycache__
