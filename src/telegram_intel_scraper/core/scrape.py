@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Dict
 
+from telegram_intel_scraper.providers.call_to_webhook import send_to_all_webhooks
 from telethon import TelegramClient
 
 from telegram_intel_scraper.core.config import Settings
@@ -113,7 +114,7 @@ async def run_scrape(settings: Settings) -> None:
                     }
 
                     if repo is not None:
-                        inserted = repo.upsert_article(
+                        inserted_id = repo.upsert_article(
                             {
                                 **record,
                                 "text_original": original_text,
@@ -125,7 +126,10 @@ async def run_scrape(settings: Settings) -> None:
                                 "telegram_url": f"https://t.me/{username}/{msg.id}",
                             }
                         )
-                        if not inserted:
+                        if inserted_id:
+                            print(f"[{username}] stored {msg.id} as _id={inserted_id}")
+                            send_to_all_webhooks(inserted_id)
+                        else:
                             print(f"[{username}] skipped duplicate {msg.id} for channel")
                     else:
                         # Optional JSONL fallback / audit log

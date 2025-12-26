@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Dict, Any, Optional
 
-from pymongo import MongoClient, ASCENDING
+from pymongo import ASCENDING
 from pymongo.collection import Collection
 from pymongo.errors import DuplicateKeyError
 
@@ -30,20 +30,12 @@ class ArticlesRepository:
 
         self._collection.create_index("scraped_at", name="scraped_at_idx")
 
-    def upsert_article(self, doc: Dict[str, Any]) -> bool:
+    def upsert_article(self, doc: Dict[str, Any]) -> Optional[str]:
         """
         Insert the document if the telegram_channel + external_id combo is new.
-        Returns True when a new document was written; False if skipped.
+        Returns the new `_id` as a string when inserted, or None when skipped.
         """
         now = datetime.utcnow()
-        identifier = {
-            "telegram_channel": doc["telegram_channel"],
-            "external_id": doc["external_id"],
-        }
-
-        if self._collection.find_one(identifier, {"_id": 1}):
-            return False
-
         insert_doc = {
             **doc,
             "created_at": now,
@@ -51,7 +43,8 @@ class ArticlesRepository:
         }
 
         try:
-            self._collection.insert_one(insert_doc)
-            return True
+            result = self._collection.insert_one(insert_doc)
+            inserted_id = result.inserted_id
+            return str(inserted_id) if inserted_id is not None else None
         except DuplicateKeyError:
-            return False
+            return None
