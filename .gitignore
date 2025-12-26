@@ -3,3 +3,6 @@ src/telegram_intel_scraper/*/__pycache__
 .env
 .pytest_cache
 tests/__pycache__
+telegram_scraper_session.session
+telegram_state.json
+telegram_scraper_session.session-journal
