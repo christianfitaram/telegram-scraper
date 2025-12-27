@@ -15,7 +15,7 @@ from telegram_intel_scraper.core.writer import write_jsonl
 from telegram_intel_scraper.repositories.articles_repository import ArticlesRepository
 
 from telegram_intel_scraper.providers.telegram import parse_username, iter_channel_messages
-from telegram_intel_scraper.providers.text_translate_genai import detect_and_translate_to_english
+from telegram_intel_scraper.providers.text_translate_genai import detect_and_translate_to_english, detect_translate_and_title
 from telegram_intel_scraper.providers.title_genai import generate_title_genai
 from telegram_intel_scraper.providers.title_llm import generate_title_ollama
 from telegram_intel_scraper.utils.text import normalize_whitespace, title_heuristic
@@ -98,14 +98,15 @@ async def run_scrape(settings: Settings) -> None:
 
                     if settings.translate_to_en and original_text:
                         try:
-                            language, text_en = detect_and_translate_to_english(
+                            # Unpack all three returned values
+                            language, text_en, title = detect_translate_and_title(
                                 original_text,
                                 model=settings.genai_model,
                             )
                         except Exception:
                             text_en = original_text
-
-                    title = _resolve_title(settings, text_en)
+                    else:
+                        title = _resolve_title(settings, text_en)
 
                     record: Dict[str, Any] = {
                         "title": title,
