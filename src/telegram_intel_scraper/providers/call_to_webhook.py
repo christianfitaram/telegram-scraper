@@ -168,7 +168,7 @@ def get_news_data(insert_id: str, timeout: float = FETCH_TIMEOUT) -> Optional[Di
             "text": data.get("text"),
             "topic": "",
             "source": data.get("source"),
-            "sentiment": "",
+            "sentiment": data.get("sentiment"),
             "scraped_at": data.get("telegramDate"),
         }
         return data_to_return
