@@ -15,7 +15,7 @@ from telegram_intel_scraper.core.writer import write_jsonl
 from telegram_intel_scraper.repositories.articles_repository import ArticlesRepository
 
 from telegram_intel_scraper.providers.telegram import parse_username, iter_channel_messages
-from telegram_intel_scraper.providers.text_translate_genai import detect_and_translate_to_english, detect_translate_and_title
+from telegram_intel_scraper.providers.text_translate_genai import detect_translate_and_title
 from telegram_intel_scraper.providers.title_genai import generate_title_genai
 from telegram_intel_scraper.providers.title_llm import generate_title_ollama
 from telegram_intel_scraper.utils.text import normalize_whitespace, title_heuristic
