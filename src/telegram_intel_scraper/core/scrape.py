@@ -124,6 +124,7 @@ async def run_scrape(settings: Settings) -> None:
                                 "telegram_date": msg.date,
                                 "telegram_channel": username,
                                 "telegram_url": f"https://t.me/{username}/{msg.id}",
+                                "main_source": "telegram",
                             }
                         )
                         if inserted_id:
