@@ -41,7 +41,7 @@ def _resolve_title(settings: Settings, text: str) -> str:
 
     if provider == "genai":
         try:
-            return generate_title_genai(text, model=getattr(settings, "genai_model", "gemini-3-flash-preview"))
+            return generate_title_genai(text, model=getattr(settings, "genai_model", "gemini-2.0-flash"))
         except Exception:
             return title_heuristic(text)
 

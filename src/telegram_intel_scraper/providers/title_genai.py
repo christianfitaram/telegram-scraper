@@ -21,7 +21,7 @@ def _get_genai_client(api_key: str):
 
 def generate_title_genai(
     text: str,
-    model: str = "gemini-3-flash-preview",
+    model: str = "gemini-2.0-flash",
     timeout: int = 60,
 ) -> str:
     api_key = _get_api_key()
