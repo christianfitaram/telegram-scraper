@@ -35,6 +35,7 @@ class ArticlesRepository:
         Insert the document if the telegram_channel + external_id combo is new.
         Returns the new `_id` as a string when inserted, or None when skipped.
         """
+        print("doc to insert:", doc)
         now = datetime.utcnow()
         insert_doc = {
             **doc,

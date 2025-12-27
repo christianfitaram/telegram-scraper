@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict
 
 from telegram_intel_scraper.providers.call_to_webhook import send_to_all_webhooks
+from telegram_intel_scraper.providers.sentiment import get_sentiment
 from telethon import TelegramClient
 
 from telegram_intel_scraper.core.config import Settings
@@ -114,6 +115,12 @@ async def run_scrape(settings: Settings) -> None:
                     }
 
                     if repo is not None:
+                        sentiment_result = get_sentiment(text_en)
+                        sentiment_result_to_inset = {
+                            "label": sentiment_result.label if sentiment_result else None,
+                            "score": sentiment_result.score if sentiment_result else None,
+                        }
+                        print(f"[{username}] sentiment: {sentiment_result_to_inset}")
                         inserted_id = repo.upsert_article(
                             {
                                 **record,
@@ -125,6 +132,7 @@ async def run_scrape(settings: Settings) -> None:
                                 "telegram_channel": username,
                                 "telegram_url": f"https://t.me/{username}/{msg.id}",
                                 "main_source": "telegram",
+                                "sentiment": sentiment_result_to_inset,
                             }
                         )
                         if inserted_id:
