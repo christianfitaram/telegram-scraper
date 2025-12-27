@@ -95,8 +95,12 @@ async def run_scrape(settings: Settings) -> None:
 
                     language = "unknown"
                     text_en = original_text
-
-                    if settings.translate_to_en and original_text:
+                    # 1. PRE-CHECK: Skip AI for empty or very short messages
+                    if not original_text or len(original_text.strip()) < 5:
+                        language = "unknown"
+                        text_en = original_text
+                        title = "Short Message"
+                    elif settings.translate_to_en and original_text:
                         try:
                             # Unpack all three returned values
                             language, text_en, title = detect_translate_and_title(
@@ -105,16 +109,17 @@ async def run_scrape(settings: Settings) -> None:
                             )
                         except Exception:
                             text_en = original_text
+                            title = _resolve_title(settings, text_en)
                     else:
                         title = _resolve_title(settings, text_en)
 
                     record: Dict[str, Any] = {
-                        "title": title,
-                        "url": url,
-                        "text": text_en,  # canonical text = English
-                        "source": username,
-                        "scraped_at": msg.date,
-                    }
+                            "title": title,
+                            "url": url,
+                            "text": text_en,  # canonical text = English
+                            "source": username,
+                            "scraped_at": msg.date,
+                        }
 
                     if repo is not None:
                         sentiment_result = get_sentiment(text_en)
