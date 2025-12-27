@@ -97,8 +97,12 @@ def send_to_webhook_to_embedding(insert_id, webhook_url=None):
             "sentiment": payload.get("sentiment"),
             "scraped_at": payload.get("scraped_at"),
         }
+        print(f"Prepared payload for webhook: {json.dumps(payload_to_send, ensure_ascii=False)}")
         target_url = webhook_url or os.getenv("WEBHOOK_URL", "http://localhost:8080/webhook/news")
-        return _post_json(target_url, payload_to_send, headers, timeout=DEFAULT_TIMEOUT)
+        
+        to_return = _post_json(target_url, payload_to_send, headers, timeout=DEFAULT_TIMEOUT)
+        print(f"Webhook response: {to_return}")
+        return to_return
 
     except requests.exceptions.RequestException as e:
         # Network-level errors, timeouts, DNS, etc.
