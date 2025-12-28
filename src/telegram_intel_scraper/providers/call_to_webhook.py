@@ -60,11 +60,8 @@ def _log_outgoing(target_url: str, headers: Dict[str, Any], payload: Dict[str, A
 
 def _post_json(url: str, payload: Dict[str, Any], headers: Dict[str, str], timeout: float, to:str) -> Optional[Dict[str, Any]]:
     _log_outgoing(url, headers, payload)
-    if to == "embedding":
-        response = SESSION.post(url, data=payload, headers=headers, timeout=timeout)
-    else:
-        response = SESSION.post(url, json=payload, headers=headers, timeout=timeout)
     try:
+        response = SESSION.post(url, data=payload, headers=headers, timeout=timeout)
         response.raise_for_status()
         print(f"Webhook POST succeeded: {response.status_code} Body: {response.text}")
         try:
@@ -101,7 +98,7 @@ def send_to_webhook_to_embedding(insert_id, webhook_url=None):
         }
         raw_body = json.dumps(
             payload_to_send,
-            separators=(",", ":"),   # 🔑 MUST MATCH
+            separators=(",", ":"),  
             ensure_ascii=False
         ).encode("utf-8")
         print(f"Payload for webhook: {raw_body}")
@@ -110,7 +107,6 @@ def send_to_webhook_to_embedding(insert_id, webhook_url=None):
             raw_body,
             hashlib.sha256
         ).hexdigest()
-        print(f"Body encoded for signature: {raw_body}")
         headers = {
             "Content-Type": "application/json",
             "X-Signature": f"sha256={signature}",
@@ -159,10 +155,26 @@ def send_to_webhook_thread_events(insert_id, webhook_url=None):
             "source": data.get("source"),
             "scraped_at": data.get("scraped_at"),
         }
+        raw_body = json.dumps(
+            payload,
+            separators=(",", ":"),  
+            ensure_ascii=False
+        ).encode("utf-8")
+        print(f"Payload for webhook: {raw_body}")
+        signature = hmac.new(
+            WEBHOOK_SIGNATURE.encode("utf-8"),
+            raw_body,
+            hashlib.sha256
+        ).hexdigest()
+
+        headers = {
+            "Content-Type": "application/json",
+            "X-Signature": f"sha256={signature}",
+        }
+        print(f"Headers for webhook: {headers}")
         target_url = webhook_url or os.getenv("WEBHOOK_URL_THREAD_EVENTS",
                                               "http://localhost:8000/webhooks/article-vectorized")
-        headers = {"Content-Type": "application/json"}
-        return _post_json(target_url, payload, headers, timeout=DEFAULT_TIMEOUT, to="thread_events")
+        return _post_json(target_url, raw_body, headers, timeout=DEFAULT_TIMEOUT, to="thread_events")
     except requests.exceptions.RequestException as e:
         # Network-level errors, timeouts, DNS, etc.
         print(f"Error sending to webhook (network): {e}")
