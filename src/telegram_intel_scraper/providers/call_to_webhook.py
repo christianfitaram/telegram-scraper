@@ -60,7 +60,7 @@ def _log_outgoing(target_url: str, headers: Dict[str, Any], payload: Dict[str, A
 
 def _post_json(url: str, payload: Dict[str, Any], headers: Dict[str, str], timeout: float) -> Optional[Dict[str, Any]]:
     _log_outgoing(url, headers, payload)
-    response = SESSION.post(url, json=payload, headers=headers, timeout=timeout)
+    response = SESSION.post(url, data=payload, headers=headers, timeout=timeout)
     try:
         response.raise_for_status()
         print(f"Webhook POST succeeded: {response.status_code} Body: {response.text}")
@@ -96,21 +96,26 @@ def send_to_webhook_to_embedding(insert_id, webhook_url=None):
             "sentiment": payload.get("sentiment"),
             "scraped_at": payload.get("scraped_at"),
         }
-        body = json.dumps(payload_to_send, separators=(',', ':'))
-        print(f"Payload for webhook: {body}")
+        raw_body = json.dumps(
+            payload,
+            separators=(",", ":"),   # 🔑 MUST MATCH
+            ensure_ascii=False
+        ).encode("utf-8")
+        print(f"Payload for webhook: {raw_body}")
         signature = hmac.new(
-        WEBHOOK_SIGNATURE.encode(),
-        body.encode(),
-        hashlib.sha256).hexdigest()
-        print(f"Body encoded for signature: {body.encode()}")
+            WEBHOOK_SIGNATURE.encode("utf-8"),
+            raw_body,
+            hashlib.sha256
+        ).hexdigest()
+        print(f"Body encoded for signature: {raw_body}")
         headers = {
+            "Content-Type": "application/json",
             "X-Signature": f"sha256={signature}",
-            "Content-Type": "application/json"    
         }
         print(f"Headers for webhook: {headers}")
         target_url = webhook_url or os.getenv("WEBHOOK_URL", "http://localhost:8080/webhook/news")
         
-        to_return = _post_json(target_url, payload_to_send, headers, timeout=DEFAULT_TIMEOUT)
+        to_return = _post_json(target_url, raw_body, headers, timeout=DEFAULT_TIMEOUT)
         print(f"Webhook response: {to_return}")
         return to_return
 
