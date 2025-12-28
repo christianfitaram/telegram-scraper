@@ -97,7 +97,7 @@ def send_to_webhook_to_embedding(insert_id, webhook_url=None):
             "scraped_at": payload.get("scraped_at"),
         }
         raw_body = json.dumps(
-            payload,
+            payload_to_send,
             separators=(",", ":"),   # 🔑 MUST MATCH
             ensure_ascii=False
         ).encode("utf-8")
