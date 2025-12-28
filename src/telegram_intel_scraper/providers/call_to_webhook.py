@@ -102,7 +102,7 @@ def send_to_webhook_to_embedding(insert_id, webhook_url=None):
         WEBHOOK_SIGNATURE.encode(),
         body.encode(),
         hashlib.sha256).hexdigest()
-
+        print(f"Body encoded for signature: {body.encode()}")
         headers = {
             "X-Signature": f"sha256={signature}",
             "Content-Type": "application/json"    
