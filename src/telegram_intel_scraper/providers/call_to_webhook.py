@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 import json
 import os
 from typing import Any, Dict, Iterable, Optional
@@ -76,17 +78,14 @@ def send_to_webhook_to_embedding(insert_id, webhook_url=None):
         if not payload:
             print("No data found to send to webhook.")
             return None
-
+        print(f"Fetched payload: {payload}")
         required_fields = ["article_id", "url", "title", "text", "topic", "source", "sentiment", "scraped_at"]
         validation_error = _validate_payload(payload, required_fields)
         if validation_error:
             print(validation_error)
             return None
+        
         text_builder = f"Title: {payload.get('title', '')}\n\n Text: {payload.get('text', '')}\n\n Message sent at: {payload.get('scraped_at', '')}\n\n Source: Message from {payload.get('source', '')} in Telegram\n\n URL: {payload.get('url', '')}"
-        headers = {
-            "Content-Type": "application/json",
-            "X-Signature": WEBHOOK_SIGNATURE,
-        }
         payload_to_send = {
             "article_id": payload.get("article_id"),
             "url": payload.get("url"),
@@ -97,7 +96,18 @@ def send_to_webhook_to_embedding(insert_id, webhook_url=None):
             "sentiment": payload.get("sentiment"),
             "scraped_at": payload.get("scraped_at"),
         }
-        print(f"Prepared payload for webhook: {json.dumps(payload_to_send, ensure_ascii=False)}")
+        body = json.dumps(payload_to_send, separators=(',', ':'))
+        print(f"Payload for webhook: {body}")
+        signature = hmac.new(
+        WEBHOOK_SIGNATURE.encode(),
+        body.encode(),
+        hashlib.sha256).hexdigest()
+
+        headers = {
+            "X-Signature": f"sha256={signature}",
+            "Content-Type": "application/json"    
+        }
+        print(f"Headers for webhook: {headers}")
         target_url = webhook_url or os.getenv("WEBHOOK_URL", "http://localhost:8080/webhook/news")
         
         to_return = _post_json(target_url, payload_to_send, headers, timeout=DEFAULT_TIMEOUT)
