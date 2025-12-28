@@ -58,7 +58,7 @@ def _log_outgoing(target_url: str, headers: Dict[str, Any], payload: Dict[str, A
         print("Payload (repr):", repr(payload))
 
 
-def _post_json(url: str, payload: Dict[str, Any], headers: Dict[str, str], timeout: float, to:str) -> Optional[Dict[str, Any]]:
+def _post_json(url: str, payload: Dict[str, Any], headers: Dict[str, str], timeout: float) -> Optional[Dict[str, Any]]:
     _log_outgoing(url, headers, payload)
     try:
         response = SESSION.post(url, data=payload, headers=headers, timeout=timeout)
